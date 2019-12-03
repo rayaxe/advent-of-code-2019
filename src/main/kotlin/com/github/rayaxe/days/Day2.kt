@@ -1,21 +1,42 @@
 package com.github.rayaxe.days
 
+import java.util.*
 import kotlin.reflect.KFunction2
 
-fun day2Part1(program: MutableList<Int>): List<Int> {
+fun day2Part1(program: List<Int>, noun: Int, verb: Int): List<Int> {
+    return start(program.toMutableList(), noun, verb)
+}
+
+fun day2Part2(program: List<Int>): Int {
+    val memory = LinkedList(program)
+    var result: Int
+    for (noun in 0..99) {
+        for (verb in 0..99) {
+            result = start(LinkedList(memory), noun, verb)[0]
+            if (result == 19690720) {
+                return 100 * noun + verb
+            }
+        }
+    }
+    return -1
+}
+
+fun start(program: MutableList<Int>, noun: Int, verb: Int): List<Int> {
+    program[1] = noun
+    program[2] = verb
     return run(program, 0)
 }
 
-private fun run(program: MutableList<Int>, pos: Int): List<Int> {
-    return when (val opcode = program[pos]) {
-        1 -> calc(program, pos, Math::addExact)
-        2 -> calc(program, pos, Math::multiplyExact)
+private fun run(program: MutableList<Int>, pointer: Int): List<Int> {
+    return when (val opcode = program[pointer]) {
+        1 -> calc(program, pointer, Math::addExact)
+        2 -> calc(program, pointer, Math::multiplyExact)
         99 -> program
         else -> throw IllegalStateException("Unrecognized opcode: $opcode")
     }
 }
 
-fun calc(program: MutableList<Int>, pos: Int, operation: KFunction2<Int, Int, Int>): List<Int> {
-    program[program[pos + 3]] = operation(program[program[pos + 1]], program[program[pos + 2]])
-    return run(program, pos + 4)
+fun calc(program: MutableList<Int>, pointer: Int, instruction: KFunction2<Int, Int, Int>): List<Int> {
+    program[program[pointer + 3]] = instruction(program[program[pointer + 1]], program[program[pointer + 2]])
+    return run(program, pointer + 4)
 }
