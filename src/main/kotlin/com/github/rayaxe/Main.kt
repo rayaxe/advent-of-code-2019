@@ -3,7 +3,7 @@ package com.github.rayaxe
 import com.github.rayaxe.days.*
 import java.io.File
 
-fun main(args: Array<String>) {
+fun main() {
     // Day 1
 //    val inputDay1 = readLinesFromFile("input_day1.txt")
 //    println(day1Part1(inputDay1))
@@ -29,4 +29,4 @@ fun main(args: Array<String>) {
     println(day6Part2(inputDay6))
 }
 
-private fun readLinesFromFile(filename: String) = File("src/main/resources/days/" + filename).readLines()
+private fun readLinesFromFile(filename: String) = File("src/main/resources/days/$filename").readLines()
