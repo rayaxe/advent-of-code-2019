@@ -2,7 +2,6 @@ package com.github.rayaxe.days
 
 import java.lang.IllegalArgumentException
 import kotlin.reflect.KFunction2
-import kotlin.streams.toList
 
 var systemId = 1
 var program = mutableListOf<Int>()
@@ -93,7 +92,7 @@ private fun parseOpCodeAndModes(instruction: Int): OpCodeAndModes {
     if (instructions.size == 1) return OpCodeAndModes(Character.getNumericValue(instructions[0]))
     val opCode = ("" + Character.getNumericValue(instructions[1]) + Character.getNumericValue(instructions[0])).toInt()
     val modes: List<ParameterMode> =
-        instructions.slice(2 until instructions.size).stream().map { ParameterMode.from(Character.getNumericValue(it)) }
+        instructions.slice(2 until instructions.size).map { ParameterMode.from(Character.getNumericValue(it)) }
             .toList()
     return OpCodeAndModes(opCode, modes)
 }

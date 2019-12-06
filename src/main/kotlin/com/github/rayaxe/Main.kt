@@ -20,9 +20,13 @@ fun main(args: Array<String>) {
 //    println(day4Part1(123257..647015))
 //    println(day4Part2(123257..647015))
     // Day 5
-    val inputDay5 = readLinesFromFile("input_day5.txt")[0].split(",").map { it.toInt() }
+//    val inputDay5 = readLinesFromFile("input_day5.txt")[0].split(",").map { it.toInt() }
 //    day5Part1(inputDay5, 1)
-    day5Part1(inputDay5, 5)
+//    day5Part1(inputDay5, 5)
+    // Day 6
+    val inputDay6 = readLinesFromFile("input_day6.txt")
+//    println(day6Part1(inputDay6))
+    println(day6Part2(inputDay6))
 }
 
 private fun readLinesFromFile(filename: String) = File("src/main/resources/days/" + filename).readLines()
