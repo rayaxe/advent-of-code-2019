@@ -12,7 +12,7 @@ fun day6Part1(orbits: List<String>): Int {
 
 fun day6Part2(orbits: List<String>): Int {
     orbits.forEach { parse(it) }
-    val you: Object = objects.values.first { it.name == "YOU" }
+    val you: Object = objects.get("YOU")!!
     traverse(you, 0)
     return santa
 }
@@ -26,8 +26,7 @@ private fun traverse(obj: Object, depth: Int) {
         santa = depth - 2
     }
 
-    listOfNotNull(obj.parent)
-        .union(obj.children)
+    listOfNotNull(obj.parent).union(obj.children)
         .filter { !visited.contains(it) }
         .forEach {
             visited.add(it)
