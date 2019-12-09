@@ -5,9 +5,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 
-fun day5(program: List<Int>, systemId: Int): Int = runBlocking {
-    val input = Channel<Int>()
-    val output = Channel<Int>()
+fun day5(program: List<Long>, systemId: Long): Long = runBlocking {
+    val input = Channel<Long>()
+    val output = Channel<Long>()
     val intcode = Intcode(systemId, program, input, output)
     val deferred = async { intcode.run() }
     input.send(systemId)

@@ -3,50 +3,64 @@ package com.github.rayaxe.intcode
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.runBlocking
-import kotlin.reflect.KFunction2
 
-class Intcode(val id: Int, program: List<Int>, val input: ReceiveChannel<Int>, val output: SendChannel<Int>) {
+class Intcode(
+    val id: Long,
+    program: List<Long>,
+    private val input: ReceiveChannel<Long>,
+    private val output: SendChannel<Long>
+) {
 
-    private var memory: MutableList<Int> = program.toMutableList()
-    private var pointer = 0
+    private var memory: MutableMap<Long, Long> = program
+        .mapIndexed { index: Int, instruction: Long -> index.toLong() to instruction }
+        .toMap().toMutableMap()
+    private var pointer: Long = 0
+    private var relativeBase: Long = 0
     var state = State.RUN
-    var outputValue: Int? = null
+    var outputValue: Long? = null
 
     fun run() = runBlocking {
         while (state != State.HALT) {
             tick()
         }
+        output.close()
         outputValue!!
     }
 
     private suspend fun tick() {
-        val opCodeAndModes = parseOpCodeAndModes(memory[pointer])
-        println("opCode=" + opCodeAndModes.opCode)
+        val opCodeAndModes = parseOpCodeAndModes(memory[pointer]!!)
         when (val opCode = opCodeAndModes.opCode) {
-            1 -> operation(opCodeAndModes.modes, Math::addExact)
-            2 -> operation(opCodeAndModes.modes, Math::multiplyExact)
-            3 -> input(input.receive())
+            1 -> operation(opCodeAndModes.modes) { x, y -> x + y }
+            2 -> operation(opCodeAndModes.modes) { x, y -> x * y }
+            3 -> input(input.receive(), opCodeAndModes.modes)
             4 -> output(opCodeAndModes.modes)
-            5 -> jump(opCodeAndModes.modes) { x -> x != 0 }
-            6 -> jump(opCodeAndModes.modes) { x -> x == 0 }
+            5 -> jump(opCodeAndModes.modes) { x -> x != 0L }
+            6 -> jump(opCodeAndModes.modes) { x -> x == 0L }
             7 -> compare(opCodeAndModes.modes) { x, y -> x < y }
             8 -> compare(opCodeAndModes.modes) { x, y -> x == y }
+            9 -> relativeBaseOffset(opCodeAndModes.modes)
             99 -> state = State.HALT
             else -> throw IllegalStateException("Unrecognized opcode: $opCode")
         }
     }
 
-    private fun operation(modes: List<ParameterMode>, operation: KFunction2<Int, Int, Int>) {
+    private fun operation(modes: List<ParameterMode>, operation: (Long, Long) -> Long) {
         val mode1 = modes.getOrElse(0) { ParameterMode.POSITION_MODE }
         val mode2 = modes.getOrElse(1) { ParameterMode.POSITION_MODE }
+        val mode3 = modes.getOrElse(2) { ParameterMode.POSITION_MODE }
         val parameter1 = read(pointer + 1, mode1)
         val parameter2 = read(pointer + 2, mode2)
-        memory[memory[pointer + 3]] = operation(parameter1, parameter2)
+        val parameter3 = read(pointer + 3, ParameterMode.IMMEDIATE_MODE)
+        val offset = if (mode3 == ParameterMode.RELATIVE_MODE) relativeBase else 0L
+        writeMemory(parameter3 + offset, operation(parameter1, parameter2))
         pointer += 4
     }
 
-    private fun input(input: Int) {
-        memory[memory[pointer + 1]] = input
+    private fun input(input: Long, modes: List<ParameterMode>) {
+        val mode = modes.getOrElse(0) { ParameterMode.POSITION_MODE }
+        val parameter = read(pointer + 1, ParameterMode.IMMEDIATE_MODE)
+        val offset = if (mode == ParameterMode.RELATIVE_MODE) relativeBase else 0L
+        writeMemory(parameter + offset, input)
         pointer += 2
     }
 
@@ -58,7 +72,7 @@ class Intcode(val id: Int, program: List<Int>, val input: ReceiveChannel<Int>, v
         pointer += 2
     }
 
-    private fun jump(modes: List<ParameterMode>, shouldJump: (Int) -> Boolean) {
+    private fun jump(modes: List<ParameterMode>, shouldJump: (Long) -> Boolean) {
         val mode1 = modes.getOrElse(0) { ParameterMode.POSITION_MODE }
         val mode2 = modes.getOrElse(1) { ParameterMode.POSITION_MODE }
         val parameter1 = read(pointer + 1, mode1)
@@ -70,27 +84,42 @@ class Intcode(val id: Int, program: List<Int>, val input: ReceiveChannel<Int>, v
         }
     }
 
-    private fun compare(modes: List<ParameterMode>, compare: (Int, Int) -> Boolean) {
+    private fun compare(modes: List<ParameterMode>, compare: (Long, Long) -> Boolean) {
         val mode1 = modes.getOrElse(0) { ParameterMode.POSITION_MODE }
         val mode2 = modes.getOrElse(1) { ParameterMode.POSITION_MODE }
+        val mode3 = modes.getOrElse(2) { ParameterMode.POSITION_MODE }
         val parameter1 = read(pointer + 1, mode1)
         val parameter2 = read(pointer + 2, mode2)
-        if (compare(parameter1, parameter2)) {
-            memory[memory[pointer + 3]] = 1
-        } else {
-            memory[memory[pointer + 3]] = 0
-        }
+        val parameter3 = read(pointer + 3, ParameterMode.IMMEDIATE_MODE)
+        val offset = if (mode3 == ParameterMode.RELATIVE_MODE) relativeBase else 0L
+        val result: Long = if (compare(parameter1, parameter2)) 1L else 0L
+        writeMemory(parameter3 + offset, result)
         pointer += 4
     }
 
-    private fun read(parameter: Int, mode: ParameterMode): Int {
+    private fun relativeBaseOffset(modes: List<ParameterMode>) {
+        val mode = modes.getOrElse(0) { ParameterMode.POSITION_MODE }
+        relativeBase += read(pointer + 1, mode).toInt()
+        pointer += 2
+    }
+
+    private fun read(parameter: Long, mode: ParameterMode): Long {
         return when (mode) {
-            ParameterMode.POSITION_MODE -> memory[memory[parameter]]
-            ParameterMode.IMMEDIATE_MODE -> memory[parameter]
+            ParameterMode.POSITION_MODE -> readMemory(readMemory(parameter))
+            ParameterMode.IMMEDIATE_MODE -> readMemory(parameter)
+            ParameterMode.RELATIVE_MODE -> readMemory(readMemory(parameter) + relativeBase)
         }
     }
 
-    private fun parseOpCodeAndModes(instruction: Int): OpCodeAndModes {
+    private fun readMemory(index: Long): Long {
+        return memory.getOrPut(index, { 0L })
+    }
+
+    private fun writeMemory(index: Long, value: Long) {
+        memory[index] = value
+    }
+
+    private fun parseOpCodeAndModes(instruction: Long): OpCodeAndModes {
         val instructions = instruction.toString().reversed().toCharArray()
         if (instructions.size == 1) return OpCodeAndModes(Character.getNumericValue(instructions[0]))
         val opCode =
@@ -105,10 +134,13 @@ class Intcode(val id: Int, program: List<Int>, val input: ReceiveChannel<Int>, v
 
     private enum class ParameterMode {
         POSITION_MODE {
-            override fun getCode(): Int = 0
+            override fun getCode() = 0
         },
         IMMEDIATE_MODE {
-            override fun getCode(): Int = 1
+            override fun getCode() = 1
+        },
+        RELATIVE_MODE {
+            override fun getCode() = 2
         };
 
         abstract fun getCode(): Int

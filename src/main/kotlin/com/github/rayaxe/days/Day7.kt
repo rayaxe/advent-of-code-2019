@@ -7,23 +7,23 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
-fun day7Part1(program: List<Int>): Int {
+fun day7Part1(program: List<Long>): Long {
     val phaseSequences: List<List<Int>> = permute((0..4).toList())
     return phaseSequences.map { day7(program, it) }.max()!!
 }
 
-fun day7Part2(program: List<Int>): Int {
+fun day7Part2(program: List<Long>): Long {
     val phaseSequences: List<List<Int>> = permute((5..9).toList())
     return phaseSequences.map { day7(program, it) }.max()!!
 }
 
-fun day7(program: List<Int>, phaseSequence: List<Int>): Int = runBlocking {
-    val channels: List<Channel<Int>> = listOf(Channel(), Channel(), Channel(), Channel(), Channel())
+fun day7(program: List<Long>, phaseSequence: List<Int>): Long = runBlocking {
+    val channels: List<Channel<Long>> = listOf(Channel(), Channel(), Channel(), Channel(), Channel())
     val amplifiers: List<Pair<Intcode, Int>> = (0..4)
         .map {
             val source = (it + 4) % 5
             val target = it
-            val intcode = Intcode(it, program, channels[source], channels[target])
+            val intcode = Intcode(it.toLong(), program, channels[source], channels[target])
             Pair(intcode, it)
         }
         .toList()
@@ -34,11 +34,11 @@ fun day7(program: List<Int>, phaseSequence: List<Int>): Int = runBlocking {
     launch { amplifiers[3].first.run() }
     val deferred = async { amplifiers[4].first.run() }
     println("=== Send phase setting ===")
-    channels[0].send(phaseSequence[amplifiers[0].second])
-    channels[1].send(phaseSequence[amplifiers[1].second])
-    channels[2].send(phaseSequence[amplifiers[2].second])
-    channels[3].send(phaseSequence[amplifiers[3].second])
-    channels[4].send(phaseSequence[amplifiers[4].second])
+    channels[0].send(phaseSequence[amplifiers[0].second].toLong())
+    channels[1].send(phaseSequence[amplifiers[1].second].toLong())
+    channels[2].send(phaseSequence[amplifiers[2].second].toLong())
+    channels[3].send(phaseSequence[amplifiers[3].second].toLong())
+    channels[4].send(phaseSequence[amplifiers[4].second].toLong())
     println("=== Send start signal ===")
     channels[0].send(0)
     println("=== Running... ===")
