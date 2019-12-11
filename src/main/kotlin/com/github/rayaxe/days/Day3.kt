@@ -2,7 +2,7 @@ package com.github.rayaxe.days
 
 import kotlin.math.abs
 
-data class Coordinate(val x: Int, val y: Int) : Comparable<Coordinate> {
+private data class Coordinate(val x: Int, val y: Int) : Comparable<Coordinate> {
     var steps: Int = 0
 
     override fun compareTo(other: Coordinate): Int = when {
@@ -32,7 +32,7 @@ fun day3Part2(path1: List<String>, path2: List<String>): Int? {
     return wire1.sorted().zip(wire2.sorted()).map { it.first.steps + it.second.steps }.min()
 }
 
-fun trace(path: List<String>): Set<Coordinate> {
+private fun trace(path: List<String>): Set<Coordinate> {
     val result = mutableSetOf<Coordinate>()
     var position = Coordinate(0, 0)
     for (instruction in path) {

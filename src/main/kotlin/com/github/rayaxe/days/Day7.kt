@@ -23,7 +23,7 @@ fun day7(program: List<Long>, phaseSequence: List<Int>): Long = runBlocking {
         .map {
             val source = (it + 4) % 5
             val target = it
-            val intcode = Intcode(it.toLong(), program, channels[source], channels[target])
+            val intcode = Intcode(program, channels[source], channels[target])
             Pair(intcode, it)
         }
         .toList()

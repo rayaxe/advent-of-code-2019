@@ -8,7 +8,7 @@ import kotlinx.coroutines.runBlocking
 fun day9(program: List<Long>, systemId: Long, setPhase: Boolean = true): List<Long> = runBlocking {
     val input = Channel<Long>()
     val output = Channel<Long>()
-    val intcode = Intcode(systemId, program, input, output)
+    val intcode = Intcode(program, input, output)
     launch { intcode.run() }
     if (setPhase) {
         input.send(systemId)
